@@ -7,13 +7,17 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "db:push": "dotenv -e .env -- drizzle-kit push",
+    "db:clear": "dotenv -e .env -- node scripts/clear-database.mjs",
     "db:studio": "dotenv -e .env -- drizzle-kit studio"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
     "@firecrawl/pdf-inspector": "^1.12.0",
     "@neondatabase/serverless": "^1.1.0",
+    "@number-flow/react": "^0.6.2",
     "@openrouter/ai-sdk-provider": "^3.0.0",
     "@phosphor-icons/react": "^2.1.10",
     "@shadcn/react": "^0.2.1",
@@ -50,6 +54,7 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4",
     "typescript": "^5"
   }

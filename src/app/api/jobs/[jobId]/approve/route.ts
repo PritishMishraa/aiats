@@ -1,3 +1,26 @@
-import { eq } from "drizzle-orm"; import { generateRubric, AI_MODEL } from "@/ai/generate"; import { getDb } from "@/db"; import { auditEvents, jobs } from "@/db/schema"; import { requireAdmin } from "@/security/admin";
+import { completeJobLifecycleStep, failJobLifecycleStep, startJobLifecycleStep } from "@/lib/job-workflow-tracking";
+import { approveJob } from "@/lib/job-lifecycle";
+
 export const maxDuration = 60;
-export async function POST(_: Request, { params }: { params: Promise<{ jobId: string }> }) { try { const actor = await requireAdmin(); const { jobId } = await params; const [job] = await getDb().select().from(jobs).where(eq(jobs.id, jobId)).limit(1); if (!job) return Response.json({ error: "Job not found" }, { status: 404 }); const rubric = await generateRubric(job.jobSpec); const [updated] = await getDb().update(jobs).set({ rubric, rubricVersion: job.rubricVersion + 1, status: "approved", aiModel: AI_MODEL, updatedAt: new Date() }).where(eq(jobs.id, jobId)).returning(); await getDb().insert(auditEvents).values({ entityType: "job", entityId: job.id, action: "approved", actor, metadata: { rubricVersion: updated.rubricVersion } }); return Response.json({ job: updated }); } catch (error) { console.error(error); return Response.json({ error: error instanceof Error ? error.message : "Approval failed" }, { status: 500 }); } }
+
+export async function POST(_: Request, { params }: { params: Promise<{ jobId: string }> }) {
+  const actor = "system";
+  const { jobId } = await params;
+  const tracking = await startJobLifecycleStep(
+    jobId,
+    "rubric",
+    "Generate scoring rubric",
+    "AI creates weighted evaluation criteria after approval.",
+    2,
+    "ai",
+  );
+  try {
+    const result = await approveJob(jobId, actor);
+    if (tracking) await completeJobLifecycleStep(tracking, "awaiting_publish", result.accounting);
+    return Response.json({ job: result.job });
+  } catch (error) {
+    console.error(error);
+    if (tracking) await failJobLifecycleStep(tracking, error);
+    return Response.json({ error: error instanceof Error ? error.message : "Approval failed" }, { status: 500 });
+  }
+}

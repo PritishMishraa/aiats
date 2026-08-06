@@ -1,6 +1,0 @@
-import { cookies } from "next/headers"; import { createHash, timingSafeEqual } from "node:crypto";
-export const ADMIN_EMAILS = new Set(["adnaan@kgen.io", "pritishmishra579@gmail.com"]); const secret = () => process.env.ADMIN_SESSION_SECRET ?? process.env.OPENROUTER_API_KEY ?? "development-only-secret"; const sign = (email: string) => createHash("sha256").update(`${email}:${secret()}`).digest("hex");
-export function isAdminEmail(email: string) { return ADMIN_EMAILS.has(email.trim().toLowerCase()); }
-export async function createAdminSession(email: string) { (await cookies()).set("hireflow_admin", `${email}.${sign(email)}`, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", maxAge: 604800, path: "/" }); }
-export async function getAdminEmail() { const value = (await cookies()).get("hireflow_admin")?.value; if (!value) return null; const split = value.lastIndexOf("."); if (split < 1) return null; const email = value.slice(0, split), actual = value.slice(split + 1), expected = sign(email); if (actual.length !== expected.length || !timingSafeEqual(Buffer.from(actual), Buffer.from(expected))) return null; return isAdminEmail(email) ? email : null; }
-export async function requireAdmin() { const email = await getAdminEmail(); if (!email) throw new Error("Unauthorized"); return email; }

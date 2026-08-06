@@ -129,7 +129,7 @@ async function evaluateProfile(applicationId: string, confidence: number) {
         weightedScore: recommendation.score,
         recommendation: recommendation.recommendation,
         needsHumanReview: recommendation.needsHumanReview,
-        status: "review",
+        // The workflow UI subscribes while this is "evaluating". The scheduling step owns the terminal status.
         evaluatedAt: new Date(),
       })
       .where(eq(applications.id, applicationId));
@@ -149,45 +149,51 @@ async function queueInterviewSchedulingDecision(applicationId: string, eligible:
   const description = eligible
     ? "Strong fit identified. Awaiting an interview invitation to be sent."
     : "Awaiting a human decision on whether to send an interview invitation.";
-  await getDb()
-    .insert(workflowSteps)
-    .values({
-      applicationId,
-      key: "schedule",
-      title: "Interview scheduling decision",
-      description,
-      position: 4,
-      status: "pending",
-    })
-    .onConflictDoUpdate({
-      target: [workflowSteps.applicationId, workflowSteps.key],
-      set: { title: "Interview scheduling decision", description, status: "pending", completedAt: null },
-    });
+  await Promise.all([
+    getDb().update(applications).set({ status: "review" }).where(eq(applications.id, applicationId)),
+    getDb()
+      .insert(workflowSteps)
+      .values({
+        applicationId,
+        key: "schedule",
+        title: "Interview scheduling decision",
+        description,
+        position: 4,
+        status: "pending",
+      })
+      .onConflictDoUpdate({
+        target: [workflowSteps.applicationId, workflowSteps.key],
+        set: { title: "Interview scheduling decision", description, status: "pending", completedAt: null },
+      }),
+  ]);
   await emitWorkflowChanged();
 }
 
 async function finishSchedulingDecision(applicationId: string, eligible: boolean) {
   "use step";
   if (!eligible) {
-    await getDb()
-      .insert(workflowSteps)
-      .values({
-        applicationId,
-        key: "schedule",
-        title: "Interview scheduling decision",
-        description: "Candidate was not tagged as a strong fit, so no interview was scheduled automatically.",
-        position: 4,
-        status: "completed",
-        completedAt: new Date(),
-      })
-      .onConflictDoUpdate({
-        target: [workflowSteps.applicationId, workflowSteps.key],
-        set: {
+    await Promise.all([
+      getDb().update(applications).set({ status: "review" }).where(eq(applications.id, applicationId)),
+      getDb()
+        .insert(workflowSteps)
+        .values({
+          applicationId,
+          key: "schedule",
+          title: "Interview scheduling decision",
           description: "Candidate was not tagged as a strong fit, so no interview was scheduled automatically.",
+          position: 4,
           status: "completed",
           completedAt: new Date(),
-        },
-      });
+        })
+        .onConflictDoUpdate({
+          target: [workflowSteps.applicationId, workflowSteps.key],
+          set: {
+            description: "Candidate was not tagged as a strong fit, so no interview was scheduled automatically.",
+            status: "completed",
+            completedAt: new Date(),
+          },
+        }),
+    ]);
     await emitWorkflowChanged();
     return null;
   }

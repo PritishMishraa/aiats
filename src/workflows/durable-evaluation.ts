@@ -199,7 +199,9 @@ async function finishSchedulingDecision(applicationId: string, eligible: boolean
     position: 4,
   });
   try {
-    return await scheduleInterview(applicationId);
+    const interview = await scheduleInterview(applicationId);
+    await emitWorkflowChanged();
+    return interview;
   } catch (error) {
     await failWorkflowStep(stepId, error);
     throw error;

@@ -7,3 +7,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+<!-- BEGIN:cli-tools-avilable-agent-rules -->
+
+`neon` - Access/Create/Modify the Neon database
+`vercel` - Vercel CLI
+
+<!-- END:cli-tools-avilable-agent-rules -->
+
+<!-- BEGIN:env-rule -->
+
+You are free to access and read the `.env` file.
+
+<!-- END:env-rule -->

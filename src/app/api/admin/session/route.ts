@@ -1,0 +1,2 @@
+import { createAdminSession, isAdminEmail } from "@/security/admin";
+export async function POST(request: Request) { const { email } = await request.json(); const normalized = String(email ?? "").trim().toLowerCase(); if (!isAdminEmail(normalized)) return Response.json({ error: "This email is not allowed for the demo workspace." }, { status: 403 }); await createAdminSession(normalized); return Response.json({ ok: true, email: normalized }); }

@@ -621,7 +621,6 @@ export async function publishJobWorkflow(jobId: string) {
   const results = await Promise.allSettled([\
     publishToInternalPortal(job.id),\
     publishToGoogleJobs(job.id),\
-    publishToLever(job.id),\
     publishToLinkedInMock(job.id),\
     publishToIndeedMock(job.id),\
   ]);
@@ -721,15 +720,12 @@ The important finding is that most large job boards do **not** provide an unrest
 | --- | --- | --- |
 | Your candidate portal | Yes, completely controlled by you | **Implement for real** |
 | Google Jobs | Publish your own `JobPosting` page and notify Google through the Indexing API | **Implement for real** |
-| Lever | Authenticated API can create and update postings | Real only with Lever credentials |
 | Greenhouse | Harvest API can create jobs and update or publish job posts | Real only with Greenhouse credentials |
 | Ashby | API supports creating jobs, opening them and updating postings | Real only with Ashby credentials |
 | LinkedIn | Restricted to approved partners; it is not currently accepting new Job Posting API partnerships | Mock adapter |
 | Indeed | Job Sync API is intended for verified ATS partners | Mock adapter |
 
 Google’s Indexing API explicitly supports pages containing `JobPosting` structured data and lets site owners notify Google when a job page is added, updated or removed. This makes your custom candidate portal a legitimate distribution channel rather than merely a dummy UI. [![](https://www.google.com/s2/favicons?domain=https://developers.google.com&sz=128)Google for Developers](https://developers.google.com/search/apis/indexing-api/v3/quickstart?utm_source=chatgpt.com)
-
-Lever’s authenticated API supports creating and updating postings, and its documentation mentions temporary sandbox accounts as part of partner integration onboarding. [![](https://www.google.com/s2/favicons?domain=https://hire.lever.co&sz=128)Lever+1](https://hire.lever.co/developer/documentation?utm_source=chatgpt.com)
 
 Greenhouse Harvest supports creating jobs, updating job-post content and setting a job post live or offline. [![](https://www.google.com/s2/favicons?domain=https://developers.greenhouse.io&sz=128)Greenhouse Developers](https://developers.greenhouse.io/harvest.html?utm_source=chatgpt.com)
 
@@ -772,7 +768,6 @@ Implement:
 
 InternalPortalAdapter       real
 GoogleIndexingAdapter       real
-LeverAdapter                behind credentials
 GreenhouseAdapter           behind credentials
 AshbyAdapter                behind credentials
 LinkedInDemoAdapter         simulated
@@ -1084,7 +1079,7 @@ This is much more credible than a colored tag with opaque reasoning.
 
 ## Stretch goals
 
-- A real Lever, Greenhouse or Ashby adapter.
+- A real Greenhouse or Ashby adapter.
 
 - Email notifications.
 
@@ -1148,7 +1143,6 @@ src/
       adapter.ts
       internal.ts
       google-indexing.ts
-      lever.ts
       greenhouse.ts
       ashby.ts
       linkedin-demo.ts

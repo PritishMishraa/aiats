@@ -1,4 +1,3 @@
-import type { JobSpec } from "@/ai/schemas";
 export type PostingResult = {
   provider: string;
   status: "published" | "failed";
@@ -42,24 +41,5 @@ export async function publishGoogle(job: {
     externalId: job.id,
     externalUrl: `${base}/careers/${job.slug}`,
     demo: false,
-  };
-}
-export async function publishLever(job: {
-  id: string;
-  spec: JobSpec;
-}): Promise<PostingResult> {
-  void job;
-  if (!process.env.LEVER_API_KEY)
-    return {
-      provider: "Lever",
-      status: "failed",
-      demo: false,
-      error: "LEVER_API_KEY is not configured",
-    };
-  return {
-    provider: "Lever",
-    status: "failed",
-    demo: false,
-    error: "Lever account mapping is not configured",
   };
 }

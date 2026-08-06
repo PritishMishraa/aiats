@@ -5,7 +5,6 @@ import {
   publishDemo,
   publishGoogle,
   publishInternal,
-  publishLever,
 } from "@/integrations/job-boards";
 import { requireAdmin } from "@/security/admin";
 export async function POST(
@@ -30,7 +29,6 @@ export async function POST(
       publishGoogle(job),
       publishDemo("LinkedIn", job),
       publishDemo("Indeed", job),
-      publishLever({ id: job.id, spec: job.jobSpec }),
     ]);
     for (const result of results)
       await getDb()

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NumberFlow from "@number-flow/react";
 import { useEffect, useRef, useState } from "react";
 import { CaretDown, Check, Cpu, Robot, WarningCircle } from "@phosphor-icons/react";
 import type { WorkflowRunView } from "@/lib/workflow-runs";
@@ -11,15 +12,53 @@ import { Spinner } from "@/components/ui/spinner";
 function money(value: number) {
   return value < 0.01 ? `$${value.toFixed(4)}` : `$${value.toFixed(2)}`;
 }
-function elapsed(start: string, end: string | null) {
-  const milliseconds = new Date(end ?? Date.now()).getTime() - new Date(start).getTime();
-  return milliseconds < 1000 ? `${milliseconds}ms` : `${(milliseconds / 1000).toFixed(1)}s`;
+
+const LIVE_ELAPSED_REFRESH_MS = 100;
+const MILLISECOND_FORMAT = { maximumFractionDigits: 0 } satisfies Intl.NumberFormatOptions;
+const SECOND_FORMAT = {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+} satisfies Intl.NumberFormatOptions;
+
+function ElapsedTime({ startedAt, completedAt }: { startedAt: string; completedAt: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (completedAt) return;
+
+    const interval = window.setInterval(() => setNow(Date.now()), LIVE_ELAPSED_REFRESH_MS);
+    return () => window.clearInterval(interval);
+  }, [completedAt]);
+
+  const milliseconds = Math.max(0, new Date(completedAt ?? now).getTime() - new Date(startedAt).getTime());
+  const showSeconds = milliseconds >= 1000;
+
+  return (
+    <NumberFlow
+      key={showSeconds ? "seconds" : "milliseconds"}
+      value={showSeconds ? milliseconds / 1000 : milliseconds}
+      format={showSeconds ? SECOND_FORMAT : MILLISECOND_FORMAT}
+      suffix={showSeconds ? "s" : "ms"}
+      willChange={!completedAt}
+      suppressHydrationWarning
+      className="tabular-nums"
+    />
+  );
 }
-function aiStepTime(status: string, startedAt: string, completedAt: string | null) {
+
+function AiStepTime({
+  status,
+  startedAt,
+  completedAt,
+}: {
+  status: string;
+  startedAt: string;
+  completedAt: string | null;
+}) {
   if (status === "pending") return "Pending";
-  if (status === "running") return elapsed(startedAt, null);
+  if (status === "running") return <ElapsedTime startedAt={startedAt} completedAt={null} />;
   if (!completedAt) return "—";
-  return elapsed(startedAt, completedAt);
+  return <ElapsedTime startedAt={startedAt} completedAt={completedAt} />;
 }
 function systemStepTime(status: string, completedAt: string | null) {
   if (status === "pending") return "Pending";
@@ -131,9 +170,11 @@ function RunCard({ run, defaultOpen }: { run: WorkflowRunView; defaultOpen: bool
                         </span>
                       ) : null}
                       <span suppressHydrationWarning>
-                        {step.kind === "ai"
-                          ? aiStepTime(step.status, step.startedAt, step.completedAt)
-                          : systemStepTime(step.status, step.completedAt)}
+                        {step.kind === "ai" ? (
+                          <AiStepTime status={step.status} startedAt={step.startedAt} completedAt={step.completedAt} />
+                        ) : (
+                          systemStepTime(step.status, step.completedAt)
+                        )}
                       </span>
                     </div>
                   </div>

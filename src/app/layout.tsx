@@ -13,8 +13,10 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const appTitle = `${process.env.NODE_ENV === "development" ? "DEV " : ""}Hireflow — AI recruiting workspace`;
+
 export const metadata: Metadata = {
-  title: "Hireflow — AI recruiting workspace",
+  title: appTitle,
   description: "Draft jobs, review candidates, and coordinate interviews.",
 };
 

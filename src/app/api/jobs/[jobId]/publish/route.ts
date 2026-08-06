@@ -1,5 +1,7 @@
 import { completeJobLifecycleStep, failJobLifecycleStep, startJobLifecycleStep } from "@/lib/job-workflow-tracking";
 import { publishJob } from "@/lib/job-lifecycle";
+import { PUBLIC_JOBS_CACHE_TAG } from "@/lib/public-jobs";
+import { revalidateTag } from "next/cache";
 export async function POST(_: Request, { params }: { params: Promise<{ jobId: string }> }) {
   const { jobId } = await params;
   let tracking: Awaited<ReturnType<typeof startJobLifecycleStep>> = null;
@@ -12,6 +14,7 @@ export async function POST(_: Request, { params }: { params: Promise<{ jobId: st
       3,
     );
     const results = await publishJob(jobId);
+    revalidateTag(PUBLIC_JOBS_CACHE_TAG, { expire: 0 });
     if (tracking) await completeJobLifecycleStep(tracking, "completed");
     return Response.json({ results });
   } catch (error) {

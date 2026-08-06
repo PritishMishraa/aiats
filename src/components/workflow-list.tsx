@@ -70,6 +70,7 @@ function systemStepTime(status: string, completedAt: string | null) {
 }
 
 function RunCard({ run, defaultOpen }: { run: WorkflowRunView; defaultOpen: boolean }) {
+  const [open, setOpen] = useState(defaultOpen);
   const failed = run.status === "failed";
   const waiting = run.waiting;
   const totalCost = run.steps.reduce((sum, step) => sum + (step.costUsd ?? 0), 0);
@@ -77,7 +78,8 @@ function RunCard({ run, defaultOpen }: { run: WorkflowRunView; defaultOpen: bool
 
   return (
     <Collapsible
-      defaultOpen={defaultOpen}
+      open={open}
+      onOpenChange={setOpen}
       className="group overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,.03)]"
     >
       <CollapsibleTrigger className="flex w-full items-center gap-4 p-5 text-left hover:bg-slate-50/70">
@@ -213,6 +215,10 @@ export function WorkflowList({ initialRuns }: { initialRuns: WorkflowRunView[] }
     .filter((run) => run.active)
     .map((run) => run.runId)
     .join(",");
+  const monitoredRunIds = runs
+    .filter((run) => run.active || run.waiting)
+    .map((run) => run.runId)
+    .join(",");
 
   useEffect(() => {
     async function refresh() {
@@ -249,8 +255,14 @@ export function WorkflowList({ initialRuns }: { initialRuns: WorkflowRunView[] }
         return source;
       });
 
-    return () => sources.forEach((source) => source.close());
-  }, [activeRunIds]);
+    void refresh();
+    const poll = monitoredRunIds ? window.setInterval(refresh, 5_000) : null;
+
+    return () => {
+      sources.forEach((source) => source.close());
+      if (poll !== null) window.clearInterval(poll);
+    };
+  }, [activeRunIds, monitoredRunIds]);
 
   if (!runs.length)
     return (

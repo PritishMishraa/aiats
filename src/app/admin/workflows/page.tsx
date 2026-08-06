@@ -1,5 +1,6 @@
 import { cache, Suspense } from "react";
 import { AiCost } from "@/components/ai-cost";
+import { WorkflowActiveCount } from "@/components/workflow-active-count";
 import { WorkflowList } from "@/components/workflow-list";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWorkflowRuns as getWorkflowRunsUncached } from "@/lib/workflow-runs";
@@ -16,7 +17,9 @@ function WorkflowSummary({ active, cost }: { active: number; cost: number }) {
     <div className="flex shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,.03)]">
       <div className="min-w-24 px-4 py-3">
         <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Running</p>
-        <p className="mt-1 text-lg font-semibold leading-none tabular-nums text-slate-900">{active}</p>
+        <p className="mt-1 text-lg font-semibold leading-none tabular-nums text-slate-900">
+          <WorkflowActiveCount value={active} />
+        </p>
       </div>
       <div className="w-px bg-slate-100" />
       <div className="min-w-28 px-4 py-3">

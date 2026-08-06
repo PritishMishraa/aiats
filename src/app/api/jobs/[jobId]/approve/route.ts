@@ -1,5 +1,6 @@
 import { completeJobLifecycleStep, failJobLifecycleStep, startJobLifecycleStep } from "@/lib/job-workflow-tracking";
 import { approveJob } from "@/lib/job-lifecycle";
+import { revalidatePath } from "next/cache";
 
 export const maxDuration = 60;
 
@@ -17,6 +18,9 @@ export async function POST(_: Request, { params }: { params: Promise<{ jobId: st
   try {
     const result = await approveJob(jobId, actor);
     if (tracking) await completeJobLifecycleStep(tracking, "awaiting_publish", result.accounting);
+    revalidatePath(`/admin/jobs/${jobId}`);
+    revalidatePath("/admin/jobs");
+    revalidatePath("/admin/workflows");
     return Response.json({ job: result.job });
   } catch (error) {
     console.error(error);

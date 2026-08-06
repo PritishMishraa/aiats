@@ -12,8 +12,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ runI
   const lastEventIdHeader = request.headers.get("last-event-id");
   const lastEventId = lastEventIdHeader === null ? Number.NaN : Number(lastEventIdHeader);
   const probe = run.getReadable<WorkflowChangeEvent>({ namespace: "progress" });
+  const replay = new URL(request.url).searchParams.get("replay") === "1";
   const startIndex =
-    Number.isSafeInteger(lastEventId) && lastEventId >= 0 ? lastEventId + 1 : (await probe.getTailIndex()) + 1;
+    Number.isSafeInteger(lastEventId) && lastEventId >= 0
+      ? lastEventId + 1
+      : replay
+        ? 0
+        : (await probe.getTailIndex()) + 1;
   let index = startIndex;
   const encoder = new TextEncoder();
   const sse = new TransformStream<WorkflowChangeEvent, Uint8Array>({

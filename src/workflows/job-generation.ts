@@ -6,7 +6,7 @@ import { auditEvents, jobGenerationRuns, jobs, workflowSteps } from "@/db/schema
 import { renderJob, slugify } from "@/lib/jobs";
 import { approveJob, publishJob } from "@/lib/job-lifecycle";
 import { getWorkflowMode } from "@/lib/workspace-mode";
-import { emitWorkflowChanged } from "@/lib/workflow-events";
+import { emitJobDraftChanged, emitWorkflowChanged } from "@/lib/workflow-events";
 import {
   beginJobGenerationStep,
   completeWorkflowStep,
@@ -35,7 +35,7 @@ async function generateDraft(jobGenerationId: string, prompt: string) {
         .update(jobGenerationRuns)
         .set({ draft: draft as Partial<JobSpec>, updatedAt: new Date() })
         .where(eq(jobGenerationRuns.id, jobGenerationId));
-      await emitWorkflowChanged();
+      await emitJobDraftChanged(jobGenerationId, draft as Partial<JobSpec>);
     }
     const [generated, usage, providerMetadata] = await Promise.all([
       result.output,
@@ -66,6 +66,7 @@ async function saveJob(
   jobGenerationId: string,
   prompt: string,
   actor: string,
+  continueAutomatically: boolean,
   spec: Awaited<ReturnType<typeof generateDraft>>,
 ) {
   "use step";
@@ -101,7 +102,12 @@ async function saveJob(
       });
     await getDb()
       .update(jobGenerationRuns)
-      .set({ status: "awaiting_approval", jobId: job.id, draft: spec, updatedAt: new Date() })
+      .set({
+        status: continueAutomatically ? "running" : "awaiting_approval",
+        jobId: job.id,
+        draft: spec,
+        updatedAt: new Date(),
+      })
       .where(eq(jobGenerationRuns.id, jobGenerationId));
     await completeWorkflowStep(stepId);
     await getDb()
@@ -177,11 +183,11 @@ async function autoPublish(jobGenerationId: string, jobId: string, actor: string
   });
   try {
     await publishJob(jobId, actor);
-    await completeWorkflowStep(stepId);
     await getDb()
       .update(jobGenerationRuns)
       .set({ status: "completed", error: null, updatedAt: new Date(), completedAt: new Date() })
       .where(eq(jobGenerationRuns.id, jobGenerationId));
+    await completeWorkflowStep(stepId);
   } catch (error) {
     await failWorkflowStep(stepId, error);
     throw error;
@@ -193,8 +199,9 @@ export async function jobGenerationWorkflow(jobGenerationId: string, prompt: str
   console.info("job-generation:start", { jobGenerationId });
   try {
     const spec = await generateDraft(jobGenerationId, prompt);
-    const jobId = await saveJob(jobGenerationId, prompt, actor, spec);
-    if ((await readWorkflowMode()) === "agent") {
+    const continueAutomatically = (await readWorkflowMode()) === "agent";
+    const jobId = await saveJob(jobGenerationId, prompt, actor, continueAutomatically, spec);
+    if (continueAutomatically) {
       await autoApprove(jobGenerationId, jobId, actor);
       await autoPublish(jobGenerationId, jobId, actor);
     }

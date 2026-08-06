@@ -1,8 +1,10 @@
 import { eq } from "drizzle-orm";
+import { revalidateTag } from "next/cache";
 import { AI_MODEL, generateRubricWithAccounting } from "@/ai/generate";
 import { getDb } from "@/db";
 import { auditEvents, jobPostings, jobs } from "@/db/schema";
 import { publishDemo, publishGoogle, publishInternal } from "@/integrations/job-boards";
+import { PUBLIC_JOBS_CACHE_TAG } from "@/lib/public-jobs";
 
 export async function approveJob(jobId: string, actor = "system") {
   const [job] = await getDb().select().from(jobs).where(eq(jobs.id, jobId)).limit(1);
@@ -80,5 +82,6 @@ export async function publishJob(jobId: string, actor = "system") {
   await getDb()
     .insert(auditEvents)
     .values({ entityType: "job", entityId: jobId, action: "published", actor, metadata: { results } });
+  revalidateTag(PUBLIC_JOBS_CACHE_TAG, { expire: 0 });
   return results;
 }

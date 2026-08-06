@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowRight, CheckCircle, FilePdf, UploadSimple } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,17 @@ export function ApplicationForm({ jobId }: { jobId: string }) {
         <p className="mt-2 text-xs leading-5 text-emerald-700">
           Your resume is being processed. Save the private status link below.
         </p>
-        <a href="/admin/workflows" className="mt-3 inline-flex min-h-10 items-center text-xs font-semibold underline">
-          View application workflow
-        </a>
+        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+          <Link
+            href={`/application/${token}`}
+            className="inline-flex min-h-10 items-center text-xs font-semibold underline"
+          >
+            View private status
+          </Link>
+          <Link href="/admin/workflows" className="inline-flex min-h-10 items-center text-xs font-semibold underline">
+            View application workflow
+          </Link>
+        </div>
       </div>
     );
   return (

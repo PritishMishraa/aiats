@@ -29,6 +29,7 @@ type GenerationRun = {
   draft: JobDraft | null;
   jobId: string | null;
   error: string | null;
+  currentStep: { key: string; title: string; status: string } | null;
 };
 
 const suggestions = [
@@ -48,6 +49,7 @@ export function JobCreationWorkspace() {
   const [error, setError] = useState("");
   const [generationId, setGenerationId] = useState<string | null>(null);
   const [workflowRunId, setWorkflowRunId] = useState<string | null>(null);
+  const [currentStep, setCurrentStep] = useState<GenerationRun["currentStep"]>(null);
   const refreshing = useRef(false);
   const refreshQueued = useRef(false);
 
@@ -57,9 +59,12 @@ export function JobCreationWorkspace() {
       setWorkflowRunId(run.workflowRunId);
       setPrompt(run.prompt);
       setDraft(run.draft);
+      setCurrentStep(run.currentStep);
       setLoading(run.status === "queued" || run.status === "running");
       setError(run.error ?? "");
-      if (run.jobId && run.status !== "queued" && run.status !== "running") router.push(`/admin/jobs/${run.jobId}`);
+      if (run.jobId && ["awaiting_approval", "awaiting_publish", "completed"].includes(run.status)) {
+        router.replace(`/admin/jobs/${run.jobId}`);
+      }
     },
     [router],
   );
@@ -103,9 +108,21 @@ export function JobCreationWorkspace() {
       }
     }
 
-    const source = new EventSource(`/api/workflows/${encodeURIComponent(currentWorkflowRunId)}/events`);
+    const source = new EventSource(`/api/workflows/${encodeURIComponent(currentWorkflowRunId)}/events?replay=1`);
     source.onopen = () => void refresh();
-    source.onmessage = () => void refresh();
+    source.onmessage = (event) => {
+      try {
+        const update = JSON.parse(event.data) as
+          { type: "workflow-changed" } | { type: "job-draft"; jobGenerationId: string; draft: JobDraft };
+        if (update.type === "job-draft" && update.jobGenerationId === currentGenerationId) {
+          setDraft(update.draft);
+          return;
+        }
+      } catch {
+        // A persisted refresh below remains the source of truth for malformed events.
+      }
+      void refresh();
+    };
 
     return () => source.close();
   }, [applyRun, generationId, loading, workflowRunId]);
@@ -113,6 +130,7 @@ export function JobCreationWorkspace() {
   async function generate() {
     setLoading(true);
     setDraft(null);
+    setCurrentStep(null);
     setError("");
 
     try {
@@ -134,6 +152,20 @@ export function JobCreationWorkspace() {
       setLoading(false);
     }
   }
+
+  const progressLabel =
+    currentStep?.key === "generate"
+      ? "Writing job description"
+      : currentStep?.key === "save"
+        ? "Saving editable draft"
+        : currentStep?.key === "rubric"
+          ? "Generating scoring rubric"
+          : currentStep?.key === "publish"
+            ? "Publishing job"
+            : draft
+              ? "Finishing job workflow"
+              : "Starting generation";
+  const draftStreaming = loading && (!draft || currentStep?.key === "generate");
 
   return (
     <div className="mx-auto max-w-7xl space-y-7">
@@ -219,21 +251,21 @@ export function JobCreationWorkspace() {
                   className="h-10 shrink-0 rounded-xl bg-slate-950 pl-3.5 pr-4 text-white shadow-[0_1px_2px_rgba(15,23,42,.2),0_4px_10px_rgba(15,23,42,.12)] hover:bg-slate-800"
                 >
                   {loading ? <Spinner aria-hidden="true" /> : <Sparkle weight="fill" className="text-lime-300" />}
-                  {loading ? "Creating draft…" : "Generate draft"}
+                  {loading ? `${progressLabel}…` : "Generate draft"}
                 </Button>
               </div>
             </div>
             {loading ? (
               <div className="mt-5 flex items-center gap-3 rounded-xl bg-violet-50 p-3 text-xs text-violet-900">
                 <span className="size-2 animate-pulse rounded-full bg-violet-500" />
-                Writing your job description live
+                {progressLabel}
               </div>
             ) : null}
             {error ? <p className="mt-4 rounded-lg bg-red-50 p-3 text-xs text-red-700">{error}</p> : null}
           </>
         </section>
 
-        <JobDraftPreview draft={draft} streaming={loading} />
+        <JobDraftPreview draft={draft} streaming={draftStreaming} />
       </div>
     </div>
   );

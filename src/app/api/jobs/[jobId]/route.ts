@@ -1,10 +1,10 @@
 import { eq } from "drizzle-orm";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { jobSpecSchema } from "@/ai/schemas";
 import { getDb } from "@/db";
 import { auditEvents, jobs } from "@/db/schema";
 import { renderJob } from "@/lib/jobs";
 import { PUBLIC_JOBS_CACHE_TAG } from "@/lib/public-jobs";
-import { revalidateTag } from "next/cache";
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ jobId: string }> }) {
   try {
@@ -42,6 +42,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ jo
         metadata: { rubricInvalidated: Boolean(existing.rubric) },
       });
     revalidateTag(PUBLIC_JOBS_CACHE_TAG, { expire: 0 });
+    revalidatePath(`/admin/jobs/${jobId}`);
+    revalidatePath("/admin/jobs");
+    revalidatePath("/careers");
     return Response.json({ job });
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Update failed" }, { status: 400 });

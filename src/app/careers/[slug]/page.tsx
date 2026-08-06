@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Lightning, MapPin } from "@phosphor-icons/react/dist/ssr";
@@ -9,7 +10,15 @@ export async function generateStaticParams() {
   return publishedJobs.map((job) => ({ slug: job.slug }));
 }
 
-export default async function CareerPage({ params }: PageProps<"/careers/[slug]">) {
+export default function CareerPage({ params }: PageProps<"/careers/[slug]">) {
+  return (
+    <Suspense fallback={<CareerPageFallback />}>
+      <CareerContent params={params} />
+    </Suspense>
+  );
+}
+
+async function CareerContent({ params }: Pick<PageProps<"/careers/[slug]">, "params">) {
   const { slug } = await params;
   const job = await getPublishedJob(slug);
   if (!job) notFound();
@@ -96,6 +105,29 @@ export default async function CareerPage({ params }: PageProps<"/careers/[slug]"
           </aside>
         </div>
       </article>
+    </main>
+  );
+}
+
+function CareerPageFallback() {
+  return (
+    <main className="min-h-screen bg-[#fafaf8]">
+      <header className="mx-auto flex h-20 max-w-5xl items-center px-5">
+        <Link href="/careers" className="flex items-center gap-2 text-sm font-semibold">
+          <span className="grid size-8 place-items-center rounded-[10px] bg-slate-950 text-white">
+            <Lightning weight="fill" />
+          </span>{" "}
+          Northstar
+        </Link>
+      </header>
+      <div className="mx-auto grid max-w-5xl gap-12 px-5 pb-24 pt-20 lg:grid-cols-[1fr_320px]">
+        <div className="space-y-5">
+          <div className="h-3 w-36 animate-pulse rounded-full bg-violet-100" />
+          <div className="h-11 w-3/4 animate-pulse rounded-xl bg-slate-200" />
+          <div className="h-4 w-56 animate-pulse rounded-full bg-slate-200" />
+        </div>
+        <div className="h-[480px] animate-pulse rounded-2xl bg-white shadow-[0_8px_30px_rgba(15,23,42,.08),0_0_0_1px_rgba(15,23,42,.06)]" />
+      </div>
     </main>
   );
 }

@@ -16,6 +16,6 @@ export async function POST(request: Request) {
       target: workspaceSettings.id,
       set: { workflowMode: result.data.mode, updatedAt: new Date() },
     });
-  revalidateTag("workflow-mode", "max");
+  revalidateTag("workflow-mode", { expire: 0 });
   return Response.json({ mode: result.data.mode });
 }

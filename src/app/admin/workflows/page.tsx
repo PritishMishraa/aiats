@@ -1,4 +1,5 @@
 import { cache, Suspense } from "react";
+import { AiCost } from "@/components/ai-cost";
 import { WorkflowList } from "@/components/workflow-list";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getWorkflowRuns as getWorkflowRunsUncached } from "@/lib/workflow-runs";
@@ -20,7 +21,9 @@ function WorkflowSummary({ active, cost }: { active: number; cost: number }) {
       <div className="w-px bg-slate-100" />
       <div className="min-w-28 px-4 py-3">
         <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">AI cost</p>
-        <p className="mt-1 text-lg font-semibold leading-none tabular-nums text-slate-900">${cost.toFixed(4)}</p>
+        <p className="mt-1 text-lg font-semibold leading-none tabular-nums text-slate-900">
+          <AiCost value={cost} />
+        </p>
       </div>
     </div>
   );

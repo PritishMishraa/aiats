@@ -1,0 +1,4 @@
+node_modules
+.next
+coverage
+src/app/.well-known/workflow/

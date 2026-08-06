@@ -8,69 +8,21 @@ import { weightedRecommendation } from "@/lib/jobs";
 import { scheduleInterview } from "@/lib/interview-scheduling";
 import { getWorkflowMode } from "@/lib/workspace-mode";
 import { emitWorkflowChanged } from "@/lib/workflow-events";
-
-type Accounting = { model: string; inputTokens: number | null; outputTokens: number | null; costUsd: number | null };
-
-function errorMessage(error: unknown, fallback: string) {
-  if (error instanceof Error) return error.message;
-  if (typeof error === "string") return error;
-  if (error && typeof error === "object" && "message" in error && typeof error.message === "string")
-    return error.message;
-  return fallback;
-}
-
-async function beginStep(
-  applicationId: string,
-  key: string,
-  title: string,
-  description: string,
-  position: number,
-  kind = "system",
-) {
-  const [step] = await getDb()
-    .insert(workflowSteps)
-    .values({ applicationId, key, title, description, position, kind, status: "running", startedAt: new Date() })
-    .onConflictDoUpdate({
-      target: [workflowSteps.applicationId, workflowSteps.key],
-      set: { status: "running", error: null, startedAt: new Date(), completedAt: null },
-    })
-    .returning({ id: workflowSteps.id });
-  await emitWorkflowChanged();
-  return step.id;
-}
-async function completeStep(id: string, accounting?: Accounting, metadata?: Record<string, unknown>) {
-  await getDb()
-    .update(workflowSteps)
-    .set({
-      status: "completed",
-      completedAt: new Date(),
-      model: accounting?.model,
-      inputTokens: accounting?.inputTokens,
-      outputTokens: accounting?.outputTokens,
-      costUsd: accounting?.costUsd,
-      metadata,
-    })
-    .where(eq(workflowSteps.id, id));
-  await emitWorkflowChanged();
-}
-async function failStep(id: string, error: unknown) {
-  const message = errorMessage(error, "Step failed");
-  await getDb()
-    .update(workflowSteps)
-    .set({ status: "failed", error: message, completedAt: new Date() })
-    .where(eq(workflowSteps.id, id));
-  await emitWorkflowChanged();
-}
+import {
+  beginApplicationStep,
+  completeWorkflowStep,
+  errorMessage,
+  failWorkflowStep,
+} from "@/lib/workflow-step-tracking";
 
 async function loadApplication(applicationId: string) {
   "use step";
-  const stepId = await beginStep(
-    applicationId,
-    "load",
-    "Load application",
-    "Validate the application and approved hiring rubric.",
-    0,
-  );
+  const stepId = await beginApplicationStep(applicationId, {
+    key: "load",
+    title: "Load application",
+    description: "Validate the application and approved hiring rubric.",
+    position: 0,
+  });
   try {
     const [row] = await getDb()
       .select({ application: applications, job: jobs })
@@ -79,23 +31,22 @@ async function loadApplication(applicationId: string) {
       .where(eq(applications.id, applicationId))
       .limit(1);
     if (!row?.job.rubric) throw new Error("The job rubric is not approved");
-    await completeStep(stepId);
+    await completeWorkflowStep(stepId);
     return row;
   } catch (error) {
-    await failStep(stepId, error);
+    await failWorkflowStep(stepId, error);
     throw error;
   }
 }
 
 async function extractResume(applicationId: string, resumeUrl: string) {
   "use step";
-  const stepId = await beginStep(
-    applicationId,
-    "extract",
-    "Extract resume",
-    "Read and classify the candidate's PDF.",
-    1,
-  );
+  const stepId = await beginApplicationStep(applicationId, {
+    key: "extract",
+    title: "Extract resume",
+    description: "Read and classify the candidate's PDF.",
+    position: 1,
+  });
   try {
     await getDb().update(applications).set({ status: "extracting" }).where(eq(applications.id, applicationId));
     const blob = await get(resumeUrl, { access: "private" });
@@ -117,50 +68,48 @@ async function extractResume(applicationId: string, resumeUrl: string) {
         extractionConfidence: classification.confidence,
       })
       .where(eq(applications.id, applicationId));
-    await completeStep(stepId, undefined, {
+    await completeWorkflowStep(stepId, undefined, {
       pdfType: classification.pdfType,
       confidence: classification.confidence,
       pages: pages.pages.length,
     });
     return { text, confidence: classification.confidence };
   } catch (error) {
-    await failStep(stepId, error);
+    await failWorkflowStep(stepId, error);
     throw error;
   }
 }
 
 async function buildProfile(applicationId: string, resumeText: string) {
   "use step";
-  const stepId = await beginStep(
-    applicationId,
-    "profile",
-    "Build candidate profile",
-    "AI extracts job-relevant evidence from the resume.",
-    2,
-    "ai",
-  );
+  const stepId = await beginApplicationStep(applicationId, {
+    key: "profile",
+    title: "Build candidate profile",
+    description: "AI extracts job-relevant evidence from the resume.",
+    position: 2,
+    kind: "ai",
+  });
   try {
     await getDb().update(applications).set({ status: "evaluating" }).where(eq(applications.id, applicationId));
     const result = await extractCandidateProfileWithAccounting(resumeText);
     await getDb().update(applications).set({ profile: result.output }).where(eq(applications.id, applicationId));
-    await completeStep(stepId, result.accounting);
+    await completeWorkflowStep(stepId, result.accounting);
     return result.output;
   } catch (error) {
-    await failStep(stepId, error);
+    await failWorkflowStep(stepId, error);
     throw error;
   }
 }
 
 async function evaluateProfile(applicationId: string, confidence: number) {
   "use step";
-  const stepId = await beginStep(
-    applicationId,
-    "evaluate",
-    "Evaluate against rubric",
-    "AI scores resume evidence against the approved criteria.",
-    3,
-    "ai",
-  );
+  const stepId = await beginApplicationStep(applicationId, {
+    key: "evaluate",
+    title: "Evaluate against rubric",
+    description: "AI scores resume evidence against the approved criteria.",
+    position: 3,
+    kind: "ai",
+  });
   try {
     const [row] = await getDb()
       .select({ profile: applications.profile, rubric: jobs.rubric })
@@ -184,13 +133,13 @@ async function evaluateProfile(applicationId: string, confidence: number) {
         evaluatedAt: new Date(),
       })
       .where(eq(applications.id, applicationId));
-    await completeStep(stepId, result.accounting, {
+    await completeWorkflowStep(stepId, result.accounting, {
       score: recommendation.score,
       recommendation: recommendation.recommendation,
     });
     return recommendation;
   } catch (error) {
-    await failStep(stepId, error);
+    await failWorkflowStep(stepId, error);
     throw error;
   }
 }
@@ -243,17 +192,16 @@ async function finishSchedulingDecision(applicationId: string, eligible: boolean
     return null;
   }
 
-  const stepId = await beginStep(
-    applicationId,
-    "schedule",
-    "Schedule first interview",
-    "Agent mode schedules the first available company interview for strong-fit candidates.",
-    4,
-  );
+  const stepId = await beginApplicationStep(applicationId, {
+    key: "schedule",
+    title: "Schedule first interview",
+    description: "Agent mode schedules the first available company interview for strong-fit candidates.",
+    position: 4,
+  });
   try {
     return await scheduleInterview(applicationId);
   } catch (error) {
-    await failStep(stepId, error);
+    await failWorkflowStep(stepId, error);
     throw error;
   }
 }

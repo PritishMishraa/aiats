@@ -1,4 +1,4 @@
-export type PostingResult = {
+type PostingResult = {
   provider: string;
   status: "published" | "failed";
   externalId?: string;
@@ -6,10 +6,7 @@ export type PostingResult = {
   demo: boolean;
   error?: string;
 };
-export async function publishInternal(job: {
-  id: string;
-  slug: string;
-}): Promise<PostingResult> {
+export async function publishInternal(job: { id: string; slug: string }): Promise<PostingResult> {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   return {
     provider: "Internal careers",
@@ -19,10 +16,7 @@ export async function publishInternal(job: {
     demo: false,
   };
 }
-export async function publishDemo(
-  provider: string,
-  job: { id: string },
-): Promise<PostingResult> {
+export async function publishDemo(provider: string, job: { id: string }): Promise<PostingResult> {
   return {
     provider,
     status: "published",
@@ -30,10 +24,7 @@ export async function publishDemo(
     demo: true,
   };
 }
-export async function publishGoogle(job: {
-  id: string;
-  slug: string;
-}): Promise<PostingResult> {
+export async function publishGoogle(job: { id: string; slug: string }): Promise<PostingResult> {
   const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
   return {
     provider: "Google Jobs structured data",

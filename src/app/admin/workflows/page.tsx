@@ -1,3 +1,62 @@
-import Link from "next/link"; import { desc, eq, isNotNull } from "drizzle-orm"; import { ArrowSquareOut, CheckCircle, Clock, Warning } from "@phosphor-icons/react/dist/ssr"; import { Badge } from "@/components/ui/badge"; import { getDb } from "@/db"; import { applications, jobs } from "@/db/schema";
-export const dynamic = "force-dynamic";
-export default async function WorkflowsPage() { const rows = await getDb().select({ application: applications, jobTitle: jobs.title }).from(applications).innerJoin(jobs, eq(applications.jobId, jobs.id)).where(isNotNull(applications.workflowRunId)).orderBy(desc(applications.submittedAt)); return <div className="space-y-6"><div><p className="text-xs font-medium text-slate-400">Durable execution</p><h1 className="mt-1 text-2xl font-semibold">Workflows</h1><p className="mt-1 text-sm text-slate-500">Resume extraction, evaluation, retries, and scheduling orchestration.</p></div><div className="space-y-3">{rows.map(({ application, jobTitle }) => { const failed = application.status === "failed", active = ["submitted", "extracting", "evaluating"].includes(application.status); return <Link href={`/admin/candidates/${application.id}`} key={application.id} className="flex items-center gap-4 rounded-xl bg-white p-4 shadow-[0_0_0_1px_rgba(15,23,42,.05)]"><span className={`grid size-9 place-items-center rounded-lg ${failed ? "bg-red-50 text-red-600" : active ? "bg-violet-50 text-violet-600" : "bg-emerald-50 text-emerald-600"}`}>{failed ? <Warning weight="fill"/> : active ? <Clock weight="fill"/> : <CheckCircle weight="fill"/>}</span><div className="min-w-0 flex-1"><p className="truncate text-xs font-semibold">Evaluate {application.candidateName}</p><p className="mt-1 truncate text-[10px] text-slate-400">{jobTitle} · run {application.workflowRunId}</p></div><Badge variant="outline">{application.status}</Badge><ArrowSquareOut className="text-slate-400"/></Link>; })}{!rows.length ? <div className="rounded-xl bg-white p-12 text-center text-sm text-slate-400">Workflow runs appear here after candidates apply.</div> : null}</div></div>; }
+import { cache, Suspense } from "react";
+import { WorkflowList } from "@/components/workflow-list";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getWorkflowRuns as getWorkflowRunsUncached } from "@/lib/workflow-runs";
+
+const getWorkflowRuns = cache(getWorkflowRunsUncached);
+
+async function WorkflowContent() {
+  const runs = await getWorkflowRuns();
+  return <WorkflowList initialRuns={runs} />;
+}
+
+function WorkflowSummary({ active, cost }: { active: number; cost: number }) {
+  return (
+    <div className="flex shrink-0 overflow-hidden rounded-xl border border-slate-200/80 bg-white shadow-[0_1px_2px_rgba(15,23,42,.03)]">
+      <div className="min-w-24 px-4 py-3">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Running</p>
+        <p className="mt-1 text-lg font-semibold leading-none tabular-nums text-slate-900">{active}</p>
+      </div>
+      <div className="w-px bg-slate-100" />
+      <div className="min-w-28 px-4 py-3">
+        <p className="text-[10px] font-medium uppercase tracking-wider text-slate-400">AI cost</p>
+        <p className="mt-1 text-lg font-semibold leading-none tabular-nums text-slate-900">${cost.toFixed(4)}</p>
+      </div>
+    </div>
+  );
+}
+
+export default function WorkflowsPage() {
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-400">Durable execution</p>
+          <h1 className="mt-1 text-2xl font-semibold">Workflows</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Job creation and candidate evaluation steps, progress, and AI cost in real time.
+          </p>
+        </div>
+        <WorkflowSummaryPlaceholder />
+      </div>
+      <Suspense fallback={<Skeleton className="h-96 rounded-xl bg-white" />}>
+        <WorkflowContent />
+      </Suspense>
+    </div>
+  );
+}
+
+function WorkflowSummaryPlaceholder() {
+  return (
+    <Suspense fallback={<Skeleton className="h-[68px] w-56 rounded-xl bg-white" />}>
+      <WorkflowSummaryContent />
+    </Suspense>
+  );
+}
+
+async function WorkflowSummaryContent() {
+  const runs = await getWorkflowRuns();
+  const active = runs.filter((run) => run.active).length;
+  const cost = runs.flatMap((run) => run.steps).reduce((sum, step) => sum + (step.costUsd ?? 0), 0);
+  return <WorkflowSummary active={active} cost={cost} />;
+}

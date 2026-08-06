@@ -6,8 +6,6 @@ import { ApplicationForm } from "@/components/application-form";
 import { getDb } from "@/db";
 import { jobs } from "@/db/schema";
 
-export const dynamic = "force-dynamic";
-
 export default async function CareerPage({
   params,
 }: PageProps<"/careers/[slug]">) {

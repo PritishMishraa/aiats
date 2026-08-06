@@ -1,3 +1,117 @@
-import Link from "next/link"; import { desc, eq, sql } from "drizzle-orm"; import { CaretRight, Plus } from "@phosphor-icons/react/dist/ssr"; import { Badge } from "@/components/ui/badge"; import { buttonVariants } from "@/components/ui/button"; import { getDb } from "@/db"; import { applications, jobs } from "@/db/schema";
-export const dynamic = "force-dynamic";
-export default async function JobsPage() { const rows = await getDb().select({ job: jobs, candidates: sql<number>`count(${applications.id})` }).from(jobs).leftJoin(applications, eq(applications.jobId, jobs.id)).groupBy(jobs.id).orderBy(desc(jobs.updatedAt)); return <div className="space-y-6"><div className="flex items-end justify-between"><div><p className="text-xs font-medium text-slate-400">Workspace</p><h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">Jobs</h1><p className="mt-1 text-sm text-slate-500">Create, approve, and publish roles across channels.</p></div><Link href="/admin/jobs/new" className={buttonVariants({ className: "h-10 rounded-lg bg-slate-950 px-4 text-white" })}><Plus /> Create job</Link></div><div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,.05),0_0_0_1px_rgba(15,23,42,.05)]">{rows.length ? <div className="divide-y divide-slate-100">{rows.map(({ job, candidates }) => <Link href={`/admin/jobs/${job.id}`} key={job.id} className="group grid min-h-24 grid-cols-[1fr_auto] items-center gap-5 px-5 hover:bg-slate-50 md:grid-cols-[1.3fr_.7fr_100px_24px]"><div><div className="flex items-center gap-2"><h2 className="text-sm font-medium">{job.title}</h2><Badge className={job.status === "published" ? "bg-emerald-50 text-emerald-700" : ""} variant={job.status === "published" ? "default" : "secondary"}>{job.status}</Badge></div><p className="mt-1 text-[11px] text-slate-400">{job.jobSpec.department} · rubric v{job.rubricVersion}</p></div><p className="hidden text-xs text-slate-500 md:block">{[job.jobSpec.location.city, job.jobSpec.location.country].filter(Boolean).join(", ") || "Location flexible"}<br/><span className="text-[10px] text-slate-400">{job.jobSpec.workplaceType}</span></p><div className="hidden md:block"><p className="tabular-nums text-sm font-medium">{candidates}</p><p className="text-[10px] text-slate-400">Candidates</p></div><CaretRight className="text-slate-300" /></Link>)}</div> : <div className="p-12 text-center"><p className="text-sm font-medium">No jobs yet</p><p className="mt-1 text-xs text-slate-400">Generate your first structured job description.</p></div>}</div></div>; }
+import { Suspense } from "react";
+import Link from "next/link";
+import { desc, eq, inArray, sql } from "drizzle-orm";
+import { CaretRight, CircleNotch, MagicWand, Plus } from "@phosphor-icons/react/dist/ssr";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getDb } from "@/db";
+import { applications, jobGenerationRuns, jobs } from "@/db/schema";
+
+async function JobContent() {
+  const [rows, activeGenerations] = await Promise.all([
+    getDb()
+      .select({ job: jobs, candidates: sql<number>`count(${applications.id})` })
+      .from(jobs)
+      .leftJoin(applications, eq(applications.jobId, jobs.id))
+      .groupBy(jobs.id)
+      .orderBy(desc(jobs.updatedAt)),
+    getDb()
+      .select()
+      .from(jobGenerationRuns)
+      .where(inArray(jobGenerationRuns.status, ["queued", "running"]))
+      .orderBy(desc(jobGenerationRuns.createdAt)),
+  ]);
+  return (
+    <>
+      {activeGenerations.map((generation) => (
+        <Link
+          key={generation.id}
+          href={`/admin/jobs/new?generation=${generation.id}`}
+          className="flex items-center gap-4 rounded-xl border border-violet-200 bg-violet-50/70 p-4 text-violet-950 transition-colors hover:bg-violet-50"
+        >
+          <span className="grid size-10 place-items-center rounded-xl bg-white text-violet-600 shadow-sm">
+            <CircleNotch className="animate-spin" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <p className="truncate text-sm font-semibold">{generation.draft?.title ?? "Creating job posting"}</p>
+              <Badge className="bg-violet-100 text-violet-700">Generating</Badge>
+            </div>
+            <p className="mt-1 truncate text-xs text-violet-600/70">
+              Draft is continuing in the background. Open to follow its progress.
+            </p>
+          </div>
+          <MagicWand weight="fill" className="text-violet-500" />
+        </Link>
+      ))}
+      <div className="overflow-hidden rounded-xl bg-white shadow-[0_1px_2px_rgba(15,23,42,.05),0_0_0_1px_rgba(15,23,42,.05)]">
+        {rows.length ? (
+          <div className="divide-y divide-slate-100">
+            {rows.map(({ job, candidates }) => (
+              <Link
+                href={`/admin/jobs/${job.id}`}
+                key={job.id}
+                className="group grid min-h-24 grid-cols-[1fr_auto] items-center gap-5 px-5 hover:bg-slate-50 md:grid-cols-[1.3fr_.7fr_100px_24px]"
+              >
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-sm font-medium">{job.title}</h2>
+                    <Badge
+                      className={job.status === "published" ? "bg-emerald-50 text-emerald-700" : ""}
+                      variant={job.status === "published" ? "default" : "secondary"}
+                    >
+                      {job.status}
+                    </Badge>
+                  </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    {job.jobSpec.department} · rubric v{job.rubricVersion}
+                  </p>
+                </div>
+                <p className="hidden text-xs text-slate-500 md:block">
+                  {[job.jobSpec.location.city, job.jobSpec.location.country].filter(Boolean).join(", ") ||
+                    "Location flexible"}
+                  <br />
+                  <span className="text-[10px] text-slate-400">{job.jobSpec.workplaceType}</span>
+                </p>
+                <div className="hidden md:block">
+                  <p className="tabular-nums text-sm font-medium">{candidates}</p>
+                  <p className="text-[10px] text-slate-400">Candidates</p>
+                </div>
+                <CaretRight className="text-slate-300" />
+              </Link>
+            ))}
+          </div>
+        ) : (
+          <div className="p-12 text-center">
+            <p className="text-sm font-medium">No completed drafts yet</p>
+            <p className="mt-1 text-xs text-slate-400">Generate your first structured job description.</p>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+export default function JobsPage() {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-xs font-medium text-slate-400">Workspace</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-[-0.03em]">Jobs</h1>
+          <p className="mt-1 text-sm text-slate-500">Create, approve, and publish roles across channels.</p>
+        </div>
+        <Link
+          href="/admin/jobs/new"
+          className={buttonVariants({ className: "h-10 rounded-lg bg-slate-950 px-4 text-white" })}
+        >
+          <Plus /> Create job
+        </Link>
+      </div>
+      <Suspense fallback={<Skeleton className="h-96 rounded-xl bg-white" />}>
+        <JobContent />
+      </Suspense>
+    </div>
+  );
+}

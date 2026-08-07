@@ -39,11 +39,9 @@ const suggestions = [
   "Compensation range",
 ];
 
-export function JobCreationWorkspace() {
+export function JobCreationWorkspace({ resumeGenerationId }: { resumeGenerationId: string | null }) {
   const router = useRouter();
-  const [prompt, setPrompt] = useState(
-    "We need a senior backend engineer with 3+ years of Go, PostgreSQL and distributed systems experience. Bengaluru hybrid, working with the platform team.",
-  );
+  const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState<JobDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -70,14 +68,21 @@ export function JobCreationWorkspace() {
   );
 
   useEffect(() => {
-    const id = new URL(window.location.href).searchParams.get("generation");
-    fetch(`/api/jobs/generate?${id ? `id=${encodeURIComponent(id)}` : "active=1"}`, { cache: "no-store" })
+    if (!resumeGenerationId) return;
+
+    const controller = new AbortController();
+    fetch(`/api/jobs/generate?id=${encodeURIComponent(resumeGenerationId)}`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
       .then((response) => (response.ok ? response.json() : null))
       .then((data) => {
         if (data?.run) applyRun(data.run);
       })
       .catch(() => undefined);
-  }, [applyRun]);
+
+    return () => controller.abort();
+  }, [applyRun, resumeGenerationId]);
 
   useEffect(() => {
     if (!generationId || !workflowRunId || !loading) return;
@@ -146,7 +151,7 @@ export function JobCreationWorkspace() {
       }
       const data = await response.json();
       applyRun(data.run);
-      window.history.replaceState(null, "", `/admin/jobs/new?generation=${data.run.id}`);
+      router.replace(`/admin/jobs/new?generation=${encodeURIComponent(data.run.id)}`, { scroll: false });
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Generation failed");
       setLoading(false);

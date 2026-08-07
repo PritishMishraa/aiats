@@ -147,7 +147,7 @@ async function evaluateProfile(applicationId: string, confidence: number) {
 async function queueInterviewSchedulingDecision(applicationId: string, eligible: boolean) {
   "use step";
   const description = eligible
-    ? "Strong or best fit identified. Awaiting an interview invitation to be sent."
+    ? "Strong or potential fit identified. Awaiting an interview invitation to be sent."
     : "Awaiting a human decision on whether to send an interview invitation.";
   await Promise.all([
     getDb().update(applications).set({ status: "review" }).where(eq(applications.id, applicationId)),
@@ -180,7 +180,7 @@ async function finishSchedulingDecision(applicationId: string, eligible: boolean
           applicationId,
           key: "schedule",
           title: "Interview scheduling decision",
-          description: "Candidate was not tagged as a strong or best fit, so no interview was scheduled automatically.",
+          description: "Candidate was not tagged as a strong or potential fit, so no interview was scheduled automatically.",
           position: 4,
           status: "completed",
           completedAt: new Date(),
@@ -189,7 +189,7 @@ async function finishSchedulingDecision(applicationId: string, eligible: boolean
           target: [workflowSteps.applicationId, workflowSteps.key],
           set: {
             description:
-              "Candidate was not tagged as a strong or best fit, so no interview was scheduled automatically.",
+              "Candidate was not tagged as a strong or potential fit, so no interview was scheduled automatically.",
             status: "completed",
             completedAt: new Date(),
           },
@@ -202,7 +202,7 @@ async function finishSchedulingDecision(applicationId: string, eligible: boolean
   const stepId = await beginApplicationStep(applicationId, {
     key: "schedule",
     title: "Schedule first interview",
-    description: "Agent mode schedules the first available company interview for strong- and best-fit candidates.",
+    description: "Agent mode schedules the first available company interview for strong- and potential-fit candidates.",
     position: 4,
   });
   try {
@@ -236,7 +236,7 @@ export async function durableEvaluationWorkflow(applicationId: string) {
     const extraction = await extractResume(applicationId, row.application.resumeUrl);
     await buildProfile(applicationId, extraction.text);
     const result = await evaluateProfile(applicationId, extraction.confidence);
-    const eligible = ["strong_fit", "best_fit"].includes(result.recommendation) && !result.needsHumanReview;
+    const eligible = ["strong_fit", "potential_fit"].includes(result.recommendation);
     if ((await readWorkflowMode()) === "agent") await finishSchedulingDecision(applicationId, eligible);
     else await queueInterviewSchedulingDecision(applicationId, eligible);
     return result;

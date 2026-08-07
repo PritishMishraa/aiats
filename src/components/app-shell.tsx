@@ -10,6 +10,7 @@ import {
   ChartBar,
   GearSix,
   House,
+  Info,
   Lightning,
   List,
   Robot,
@@ -66,20 +67,30 @@ function Navigation({ compact = false, onNavigate }: { compact?: boolean; onNavi
   );
 }
 
-function SettingsLink({ compact = false, onNavigate }: { compact?: boolean; onNavigate?: () => void }) {
+function UtilityNavigation({ compact = false, onNavigate }: { compact?: boolean; onNavigate?: () => void }) {
   const pathname = usePathname();
-  const active = isActiveRoute(pathname, "/admin/settings");
   return (
-    <Link
-      href="/admin/settings"
-      onClick={onNavigate}
-      title={compact ? "Integrations" : undefined}
-      className={linkClasses(active, compact)}
-    >
-      <GearSix size={17} weight={active ? "fill" : "regular"} />
-      {!compact && <span>Integrations</span>}
-      {compact && <span className="sr-only">Integrations</span>}
-    </Link>
+    <nav className="space-y-1" aria-label="Help and settings">
+      {[
+        { href: "/admin/information", label: "Information", icon: Info },
+        { href: "/admin/settings", label: "Integrations", icon: GearSix },
+      ].map(({ href, label, icon: Icon }) => {
+        const active = isActiveRoute(pathname, href);
+        return (
+          <Link
+            key={href}
+            href={href}
+            onClick={onNavigate}
+            title={compact ? label : undefined}
+            className={linkClasses(active, compact)}
+          >
+            <Icon size={17} weight={active ? "fill" : "regular"} />
+            {!compact && <span>{label}</span>}
+            {compact && <span className="sr-only">{label}</span>}
+          </Link>
+        );
+      })}
+    </nav>
   );
 }
 
@@ -180,7 +191,7 @@ function ModeControl({
         />
         <p className="text-pretty text-[10px] leading-4 text-slate-500">
           {mode === "agent"
-            ? "Drafts, rubrics, publishing, and strong-fit interviews run automatically."
+            ? "Drafts, rubrics, publishing, and strong- or potential-fit interviews run automatically."
             : "Jobs and interview invitations pause for your approval."}
         </p>
       </div>
@@ -274,7 +285,7 @@ export function AppShell({
             </div>
           )}
           <Suspense>
-            <SettingsLink compact={isCollapsed} />
+            <UtilityNavigation compact={isCollapsed} />
           </Suspense>
         </div>
       </aside>
@@ -312,7 +323,7 @@ export function AppShell({
             <div className="mt-auto space-y-3">
               <ModeControl mode={mode} onChange={changeMode} saving={isSavingMode} />
               <Suspense>
-                <SettingsLink onNavigate={() => setIsMobileNavOpen(false)} />
+                <UtilityNavigation onNavigate={() => setIsMobileNavOpen(false)} />
               </Suspense>
             </div>
           </aside>

@@ -1,7 +1,9 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { ArrowRight, CheckCircle, FilePdf, UploadSimple } from "@phosphor-icons/react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
@@ -36,6 +38,15 @@ export function ApplicationForm({ jobId }: { jobId: string }) {
         <p className="mt-2 text-xs leading-5 text-emerald-700">
           Your resume is being processed. The hiring team will be in touch with next steps.
         </p>
+        <Link
+          href="/admin/workflows"
+          className={cn(
+            buttonVariants({ variant: "outline", size: "default" }),
+            "mt-5 w-full border-emerald-200 bg-white text-emerald-900 hover:bg-emerald-100",
+          )}
+        >
+          View the application workflow <ArrowRight />
+        </Link>
       </div>
     );
   return (

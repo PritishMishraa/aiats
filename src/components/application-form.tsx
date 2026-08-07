@@ -1,6 +1,5 @@
 "use client";
 import { useState } from "react";
-import Link from "next/link";
 import { ArrowRight, CheckCircle, FilePdf, UploadSimple } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,7 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 export function ApplicationForm({ jobId }: { jobId: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [token, setToken] = useState<string | null>(null);
+  const [submitted, setSubmitted] = useState(false);
   const [resumeName, setResumeName] = useState("");
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -22,32 +21,21 @@ export function ApplicationForm({ jobId }: { jobId: string }) {
       });
       const data = await response.json();
       if (!response.ok) return setError(data.error ?? "Unable to submit your application.");
-      setToken(data.publicToken);
+      setSubmitted(true);
     } catch {
       setError("Unable to submit your application. Check your connection and try again.");
     } finally {
       setLoading(false);
     }
   }
-  if (token)
+  if (submitted)
     return (
       <div className="rounded-2xl bg-emerald-50 p-6 text-emerald-900">
         <CheckCircle size={24} weight="fill" />
         <h2 className="mt-3 text-sm font-semibold">Application received</h2>
         <p className="mt-2 text-xs leading-5 text-emerald-700">
-          Your resume is being processed. Save the private status link below.
+          Your resume is being processed. The hiring team will be in touch with next steps.
         </p>
-        <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-          <Link
-            href={`/application/${token}`}
-            className="inline-flex min-h-10 items-center text-xs font-semibold underline"
-          >
-            View private status
-          </Link>
-          <Link href="/admin/workflows" className="inline-flex min-h-10 items-center text-xs font-semibold underline">
-            View application workflow
-          </Link>
-        </div>
       </div>
     );
   return (

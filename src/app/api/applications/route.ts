@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     revalidatePath("/admin/workflows");
 
     return Response.json(
-      { applicationId: application.id, publicToken: application.publicToken, runId: run.runId },
+      { applicationId: application.id, runId: run.runId },
       { status: 201 },
     );
   } catch (error) {

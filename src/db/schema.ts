@@ -68,7 +68,6 @@ export const applications = pgTable("applications", {
   resumeName: text("resume_name").notNull(),
   resumeSha256: text("resume_sha256").notNull(),
   status: applicationStatus("status").notNull().default("submitted"),
-  publicToken: uuid("public_token").defaultRandom().notNull().unique(),
   extractionText: text("extraction_text"),
   extractionType: text("extraction_type"),
   extractionConfidence: real("extraction_confidence"),

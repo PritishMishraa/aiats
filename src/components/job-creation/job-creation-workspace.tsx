@@ -39,9 +39,13 @@ const suggestions = [
   "Compensation range",
 ];
 
+const starterPrompt = `We’re hiring a junior front-end developer to join our RNS team and help build polished, accessible web experiences.
+Looking for someone familiar with HTML, CSS, JavaScript, and React who is eager to learn and grow with the team.
+The role will work closely with designers and senior engineers to turn thoughtful designs into reliable interfaces.`;
+
 export function JobCreationWorkspace({ resumeGenerationId }: { resumeGenerationId: string | null }) {
   const router = useRouter();
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(starterPrompt);
   const [draft, setDraft] = useState<JobDraft | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

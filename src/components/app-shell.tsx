@@ -7,7 +7,6 @@ import {
   Briefcase,
   CaretLeft,
   CaretRight,
-  ChartBar,
   GearSix,
   House,
   Info,
@@ -28,7 +27,6 @@ const nav = [
   { href: "/admin/jobs", label: "Jobs", icon: Briefcase },
   { href: "/admin/candidates", label: "Candidates", icon: Users },
   { href: "/admin/workflows", label: "Workflows", icon: Stack },
-  { href: "/admin/analytics", label: "Analytics", icon: ChartBar },
 ];
 
 function isActiveRoute(pathname: string, href: string) {
@@ -72,7 +70,7 @@ function UtilityNavigation({ compact = false, onNavigate }: { compact?: boolean;
   return (
     <nav className="space-y-1" aria-label="Help and settings">
       {[
-        { href: "/admin/information", label: "Information", icon: Info },
+        { href: "/admin/information", label: "Decision policy", icon: Info },
         { href: "/admin/settings", label: "Integrations", icon: GearSix },
       ].map(({ href, label, icon: Icon }) => {
         const active = isActiveRoute(pathname, href);

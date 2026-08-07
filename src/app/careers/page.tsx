@@ -36,7 +36,6 @@ export default async function CareersPage() {
             {openJobs.map((job) => (
               <Link
                 href={`/careers/${job.slug}`}
-                prefetch
                 key={job.id}
                 className="group flex min-h-24 items-center justify-between rounded-xl bg-white px-5 shadow-[0_1px_2px_rgba(15,23,42,.04),0_0_0_1px_rgba(15,23,42,.06)]"
               >

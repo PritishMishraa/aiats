@@ -54,12 +54,14 @@ export function TechLeadSettings({ initialEmail }: { initialEmail: string }) {
           )}
         </Button>
       </div>
-      <p
-        aria-live="polite"
-        className={status.startsWith("Saved") ? "text-xs text-emerald-700" : "text-xs text-red-600"}
-      >
-        {status || "The tech lead is added as a calendar guest alongside the candidate."}
-      </p>
+      {status ? (
+        <p
+          aria-live="polite"
+          className={status.startsWith("Saved") ? "text-xs text-emerald-700" : "text-xs text-red-600"}
+        >
+          {status}
+        </p>
+      ) : null}
     </form>
   );
 }

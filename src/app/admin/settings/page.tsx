@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { TechLeadSettings } from "@/components/tech-lead-settings";
 import { getDb } from "@/db";
 import { workspaceSettings } from "@/db/schema";
+import { companyCalendar } from "@/lib/cal";
 
 export default function SettingsPage() {
   const integrations = [
@@ -33,9 +34,20 @@ export default function SettingsPage() {
         </div>
       </div>
       <div className="rounded-xl bg-white p-5 shadow-[0_0_0_1px_rgba(15,23,42,.05)]">
-        <h2 className="text-sm font-semibold">First meeting</h2>
+        <h2 className="text-sm font-semibold">Interview scheduling</h2>
         <p className="mt-1 text-xs leading-5 text-slate-500">
-          The candidate and this tech lead will receive the calendar invite when you schedule a first meeting.
+          We schedule interviews through my personal Cal.com link, which I use as the calendar for the entire
+          company: {" "}
+          <a
+            className="font-medium text-slate-700 underline underline-offset-2 hover:text-slate-950"
+            href={companyCalendar.calendarUrl}
+            rel="noreferrer"
+            target="_blank"
+          >
+            {companyCalendar.calendarUrl}
+          </a>
+          . When a first meeting is scheduled, the candidate is the attendee and the configured tech lead is added
+          as an invitee, so both receive the calendar invitation.
         </p>
         <Suspense fallback={<TechLeadSettingsFallback />}>
           <TechLeadSettingsData />

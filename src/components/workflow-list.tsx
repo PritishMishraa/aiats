@@ -14,6 +14,8 @@ function money(value: number) {
 }
 
 const LIVE_ELAPSED_REFRESH_MS = 100;
+const ACTIVE_RUNS_REFRESH_MS = 5_000;
+const IDLE_RUNS_REFRESH_MS = 15_000;
 const MILLISECOND_FORMAT = { maximumFractionDigits: 0 } satisfies Intl.NumberFormatOptions;
 const SECOND_FORMAT = {
   minimumFractionDigits: 1,
@@ -215,10 +217,7 @@ export function WorkflowList({ initialRuns }: { initialRuns: WorkflowRunView[] }
     .filter((run) => run.active)
     .map((run) => run.runId)
     .join(",");
-  const monitoredRunIds = runs
-    .filter((run) => run.active || run.waiting)
-    .map((run) => run.runId)
-    .join(",");
+  const hasMonitoredRuns = runs.some((run) => run.active || run.waiting);
 
   useEffect(() => {
     async function refresh() {
@@ -256,13 +255,20 @@ export function WorkflowList({ initialRuns }: { initialRuns: WorkflowRunView[] }
       });
 
     void refresh();
-    const poll = monitoredRunIds ? window.setInterval(refresh, 5_000) : null;
+    const poll = window.setInterval(refresh, hasMonitoredRuns ? ACTIVE_RUNS_REFRESH_MS : IDLE_RUNS_REFRESH_MS);
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
 
     return () => {
       sources.forEach((source) => source.close());
-      if (poll !== null) window.clearInterval(poll);
+      window.clearInterval(poll);
+      window.removeEventListener("focus", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
     };
-  }, [activeRunIds, monitoredRunIds]);
+  }, [activeRunIds, hasMonitoredRuns]);
 
   if (!runs.length)
     return (

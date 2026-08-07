@@ -53,7 +53,7 @@ export default async function CandidatePage({ params }: PageProps<"/admin/candid
           <CandidateActions
             applicationId={application.id}
             resumeHref={`/api/resumes/${application.id}`}
-            scheduled={interview?.status === "scheduled"}
+            scheduled={application.status === "interview_scheduled" || interview?.status === "scheduled"}
             techLeadEmail={settings?.techLeadEmail ?? null}
           />
         </div>

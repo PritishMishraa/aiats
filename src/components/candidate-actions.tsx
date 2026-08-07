@@ -186,21 +186,23 @@ export function CandidateActions({
             <CheckCircle weight="fill" /> Interview scheduled
           </span>
         )}
-        <Button
-          variant="outline"
-          onClick={reject}
-          disabled={loading}
-          aria-busy={pendingAction === "reject"}
-          className="h-10 border-slate-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-        >
-          {pendingAction === "reject" ? (
-            <>
-              <Spinner aria-hidden="true" /> Rejecting…
-            </>
-          ) : (
-            "Reject"
-          )}
-        </Button>
+        {!scheduled ? (
+          <Button
+            variant="outline"
+            onClick={reject}
+            disabled={loading}
+            aria-busy={pendingAction === "reject"}
+            className="h-10 border-slate-200 text-red-700 hover:bg-red-50 hover:text-red-800"
+          >
+            {pendingAction === "reject" ? (
+              <>
+                <Spinner aria-hidden="true" /> Rejecting…
+              </>
+            ) : (
+              "Reject"
+            )}
+          </Button>
+        ) : null}
       </div>
       {error && !dialogOpen ? (
         <p role="alert" className="w-full text-xs font-medium text-red-600">

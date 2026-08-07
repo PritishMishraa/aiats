@@ -5,7 +5,6 @@ import { ArrowRight, CheckCircle, FilePdf, UploadSimple } from "@phosphor-icons/
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Spinner } from "@/components/ui/spinner";
 export function ApplicationForm({ jobId }: { jobId: string }) {
   const [loading, setLoading] = useState(false);
@@ -109,10 +108,6 @@ export function ApplicationForm({ jobId }: { jobId: string }) {
         </div>
         <p className="mt-1 text-[9px] text-slate-400">PDF, including scanned documents · maximum 5 MB</p>
       </div>
-      <label className="flex items-start gap-2 text-[10px] leading-4 text-slate-500">
-        <Checkbox name="consent" required className="mt-0.5" />I consent to automated resume analysis. AI provides a
-        recommendation; a person reviews hiring decisions.
-      </label>
       {error ? <p className="rounded-lg bg-red-50 p-3 text-[10px] text-red-700">{error}</p> : null}
       <Button
         type="submit"

@@ -18,11 +18,10 @@ export async function POST(request: Request) {
       .trim()
       .toLowerCase();
     const linkedinUrl = String(form.get("linkedinUrl") ?? "").trim() || null;
-    const consent = form.get("consent") === "true" || form.get("consent") === "on";
     const resume = form.get("resume");
 
-    if (!name || !/^\S+@\S+\.\S+$/.test(email) || !consent || !(resume instanceof File)) {
-      return Response.json({ error: "Name, valid email, resume, and analysis consent are required." }, { status: 400 });
+    if (!name || !/^\S+@\S+\.\S+$/.test(email) || !(resume instanceof File)) {
+      return Response.json({ error: "Name, valid email, and resume are required." }, { status: 400 });
     }
     if (resume.type !== "application/pdf" || resume.size > 5 * 1024 * 1024) {
       return Response.json({ error: "Resume must be a PDF no larger than 5 MB." }, { status: 400 });
@@ -46,7 +45,7 @@ export async function POST(request: Request) {
         candidateName: name,
         candidateEmail: email,
         linkedinUrl,
-        consent,
+        consent: true,
         resumeUrl: blob.url,
         resumeName: resume.name,
         resumeSha256: sha,
